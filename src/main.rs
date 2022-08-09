@@ -1,5 +1,6 @@
 use std::cell::RefCell;
 use std::collections::BTreeMap;
+use std::rc::Rc;
 
 // round to decimal digits
 fn round(x: f32, precision: u32) -> f32 {
@@ -14,19 +15,19 @@ fn main() {
     let x4 = create_input(3f32);
 
     // graph variable is the output node of the graph:
-    // let graph = add(
-    //     x1.clone(),
-    //     mul(
-    //         x2.clone(),
-    //         sin(add(x2.clone(), pow_f32(x3.clone(), Node::Variable(3f32)))),
-    //     ),
-    // );
+    let graph = add(
+        x1.clone(),
+        mul(
+            x2.clone(),
+            sin(add(x2.clone(), pow_f32(x3.clone(), x4.clone()))),
+        ),
+    );
 
-    let pow = pow_f32(&x3, &x4);
-    let add1 = add(&x2, &pow);
-    let sin = sin(&add1);
-    let mul = mul(&x2, &sin);
-    let graph = add(&x1, &mul);
+    // let pow = pow_f32(&x3, &x4);
+    // let add1 = add(&x2, &pow);
+    // let sin = sin(&add1);
+    // let mul = mul(&x2, &sin);
+    // let graph = add(&x1, &mul);
 
     println!("\nfirst pass, x1 = 1, x2 = 2, x3 = 3");
     let mut result = graph.compute();
@@ -56,19 +57,19 @@ fn main() {
     println!("Graph output = {}", result);
     assert_eq!(round(result, 5), -0.56656);
 
-    println!("\nfifth pass, mul node replaced by variable with value 1");
-    println!("expression is now 'x1 + mul', x1 = 2, mul = 1");
-    mul.set(1f32);
-    result = graph.compute();
-    println!("Graph output = {}", result);
-    assert_eq!(result, 3f32);
+    // println!("\nfifth pass, mul node replaced by variable with value 1");
+    // println!("expression is now 'x1 + mul', x1 = 2, mul = 1");
+    // mul.set(1f32);
+    // result = graph.compute();
+    // println!("Graph output = {}", result);
+    // assert_eq!(result, 3f32);
 }
 
-struct Node<'a> {
-    node_type: RefCell<NodeType<'a>>,
+struct Node {
+    node_type: RefCell<NodeType>,
 }
 
-impl Node<'_> {
+impl Node {
     fn compute(&self) -> f32 {
         match &*self.node_type.borrow() {
             NodeType::Computable(n) => n.compute(),
@@ -82,18 +83,18 @@ impl Node<'_> {
     }
 }
 
-enum NodeType<'a> {
-    Computable(ComputationNode<'a>),
+enum NodeType {
+    Computable(ComputationNode),
     Variable(f32),
 }
 
-struct ComputationNode<'a> {
-    input: Vec<&'a Node<'a>>,
+struct ComputationNode {
+    input: Vec<Rc<Node>>,
     computation: Box<dyn Fn(Vec<f32>) -> f32>,
     cache: RefCell<BTreeMap<String, f32>>,
 }
 
-impl ComputationNode<'_> {
+impl ComputationNode {
     fn compute(&self) -> f32 {
         let v = self.input.iter().map(|x| x.compute()).collect();
         // println!("{:?}", v);
@@ -109,52 +110,52 @@ impl ComputationNode<'_> {
     }
 }
 
-fn create_input<'a>(x: f32) -> Node<'a> {
-    Node {
+fn create_input<'a>(x: f32) -> Rc<Node> {
+    Rc::new(Node {
         node_type: RefCell::new(NodeType::Variable(x)),
-    }
+    })
 }
 
-fn add<'a>(first: &'a Node<'a>, second: &'a Node<'a>) -> Node<'a> {
+fn add(first: Rc<Node>, second: Rc<Node>) -> Rc<Node> {
     let v = vec![first, second];
-    Node {
+    Rc::new(Node {
         node_type: RefCell::new(NodeType::Computable(ComputationNode {
             input: v,
             computation: Box::new(|a: Vec<f32>| a[0] + a[1]),
             cache: RefCell::new(BTreeMap::new()),
         })),
-    }
+    })
 }
 
-fn mul<'a>(first: &'a Node<'a>, second: &'a Node<'a>) -> Node<'a> {
+fn mul(first: Rc<Node>, second: Rc<Node>) -> Rc<Node> {
     let v = vec![first, second];
-    Node {
+    Rc::new(Node {
         node_type: RefCell::new(NodeType::Computable(ComputationNode {
             input: v,
             computation: Box::new(|a: Vec<f32>| a[0] * a[1]),
             cache: RefCell::new(BTreeMap::new()),
         })),
-    }
+    })
 }
 
-fn sin<'a>(x: &'a Node<'a>) -> Node<'a> {
+fn sin(x: Rc<Node>) -> Rc<Node> {
     let v = vec![x];
-    Node {
+    Rc::new(Node {
         node_type: RefCell::new(NodeType::Computable(ComputationNode {
             input: v,
             computation: Box::new(|a: Vec<f32>| a[0].sin()),
             cache: RefCell::new(BTreeMap::new()),
         })),
-    }
+    })
 }
 
-fn pow_f32<'a>(base: &'a Node<'a>, exponent: &'a Node<'a>) -> Node<'a> {
+fn pow_f32(base: Rc<Node>, exponent: Rc<Node>) -> Rc<Node> {
     let v = vec![base, exponent];
-    Node {
+    Rc::new(Node {
         node_type: RefCell::new(NodeType::Computable(ComputationNode {
             input: v,
             computation: Box::new(|a: Vec<f32>| a[0].powf(a[1])),
             cache: RefCell::new(BTreeMap::new()),
         })),
-    }
+    })
 }
