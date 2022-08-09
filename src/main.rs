@@ -8,7 +8,7 @@ fn round(x: f32, precision: u32) -> f32 {
     (x * m).round() / m
 }
 fn main() {
-    // x1, x2, x3 are input nodes of the computational graph:
+    // x1, x2, x3, x4 are input nodes of the computational graph:
     let x1 = create_input(1f32);
     let x2 = create_input(2f32);
     let x3 = create_input(3f32);
@@ -22,12 +22,6 @@ fn main() {
             sin(add(x2.clone(), pow_f32(x3.clone(), x4.clone()))),
         ),
     );
-
-    // let pow = pow_f32(&x3, &x4);
-    // let add1 = add(&x2, &pow);
-    // let sin = sin(&add1);
-    // let mul = mul(&x2, &sin);
-    // let graph = add(&x1, &mul);
 
     println!("\nfirst pass, x1 = 1, x2 = 2, x3 = 3");
     let mut result = graph.compute();
@@ -56,13 +50,6 @@ fn main() {
     result = round(result, 5);
     println!("Graph output = {}", result);
     assert_eq!(round(result, 5), -0.56656);
-
-    // println!("\nfifth pass, mul node replaced by variable with value 1");
-    // println!("expression is now 'x1 + mul', x1 = 2, mul = 1");
-    // mul.set(1f32);
-    // result = graph.compute();
-    // println!("Graph output = {}", result);
-    // assert_eq!(result, 3f32);
 }
 
 struct Node {
@@ -77,9 +64,11 @@ impl Node {
         }
     }
 
-    ///Irreversably sets a node to a variable
     fn set(&self, x: f32) {
-        self.node_type.replace(NodeType::Variable(x));
+        match *self.node_type.borrow_mut() {
+            NodeType::Computable(_) => panic!("Cannot set a computable node"),
+            NodeType::Variable(ref mut v) => *v = x,
+        };
     }
 }
 
