@@ -64,23 +64,37 @@ pub fn create_input<'a>(x: f32) -> Rc<Node> {
     })
 }
 
-pub fn add(first: Rc<Node>, second: Rc<Node>) -> Rc<Node> {
+pub fn add(augend: Rc<Node>, addend: Rc<Node>) -> Rc<Node> {
     Rc::new(Node::create_computable(
-        vec![first, second],
+        vec![augend, addend],
         Box::new(|a: Vec<f32>| a[0] + a[1]),
     ))
 }
 
-pub fn mul(first: Rc<Node>, second: Rc<Node>) -> Rc<Node> {
+pub fn sub(minuend: Rc<Node>, subtrahend: Rc<Node>) -> Rc<Node> {
     Rc::new(Node::create_computable(
-        vec![first, second],
+        vec![minuend, subtrahend],
+        Box::new(|a: Vec<f32>| a[0] - a[1]),
+    ))
+}
+
+pub fn mul(multiplier: Rc<Node>, multiplicand: Rc<Node>) -> Rc<Node> {
+    Rc::new(Node::create_computable(
+        vec![multiplier, multiplicand],
         Box::new(|a: Vec<f32>| a[0] * a[1]),
     ))
 }
 
-pub fn sin(x: Rc<Node>) -> Rc<Node> {
+pub fn div(dividend: Rc<Node>, divisor: Rc<Node>) -> Rc<Node> {
     Rc::new(Node::create_computable(
-        vec![x],
+        vec![dividend, divisor],
+        Box::new(|a: Vec<f32>| a[0] / a[1]),
+    ))
+}
+
+pub fn sin(angle: Rc<Node>) -> Rc<Node> {
+    Rc::new(Node::create_computable(
+        vec![angle],
         Box::new(|a: Vec<f32>| a[0].sin()),
     ))
 }
