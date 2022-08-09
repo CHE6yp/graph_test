@@ -1,12 +1,6 @@
-use std::cell::RefCell;
-use std::collections::BTreeMap;
-use std::rc::Rc;
+mod node;
+use crate::node::{add, create_input, mul, pow_f32, sin};
 
-// round to decimal digits
-fn round(x: f32, precision: u32) -> f32 {
-    let m = 10i32.pow(precision) as f32;
-    (x * m).round() / m
-}
 fn main() {
     // x1, x2, x3, x4 are input nodes of the computational graph:
     let x1 = create_input(1f32);
@@ -23,26 +17,26 @@ fn main() {
         ),
     );
 
-    println!("\nfirst pass, x1 = 1, x2 = 2, x3 = 3");
+    println!("\nFirst pass, x1 = 1, x2 = 2, x3 = 3");
     let mut result = graph.compute();
     result = round(result, 5);
     println!("Graph output = {}", result);
     assert_eq!(round(result, 5), -0.32727);
 
-    println!("\nsecond pass, same variables");
+    println!("\nSecond pass, same variables");
     let mut result = graph.compute();
     result = round(result, 5);
     println!("Graph output = {}", result);
     assert_eq!(round(result, 5), -0.32727);
 
-    println!("\nthird pass, x1 changed to 2");
+    println!("\nThird pass, x1 changed to 2");
     x1.set(2f32);
     let mut result = graph.compute();
     result = round(result, 5);
     println!("Graph output = {}", result);
     assert_eq!(round(result, 5), 0.67273);
 
-    println!("\nfourth pass, x1 = 2, x2 = 3, x3 = 4");
+    println!("\nFourth pass, x1 = 2, x2 = 3, x3 = 4");
     x1.set(2f32);
     x2.set(3f32);
     x3.set(4f32);
@@ -52,99 +46,8 @@ fn main() {
     assert_eq!(round(result, 5), -0.56656);
 }
 
-struct Node {
-    node_type: RefCell<NodeType>,
-}
-
-impl Node {
-    fn compute(&self) -> f32 {
-        match &*self.node_type.borrow() {
-            NodeType::Computable(n) => n.compute(),
-            NodeType::Variable(v) => *v,
-        }
-    }
-
-    fn set(&self, x: f32) {
-        match *self.node_type.borrow_mut() {
-            NodeType::Computable(_) => panic!("Cannot set a computable node"),
-            NodeType::Variable(ref mut v) => *v = x,
-        };
-    }
-}
-
-enum NodeType {
-    Computable(ComputationNode),
-    Variable(f32),
-}
-
-struct ComputationNode {
-    input: Vec<Rc<Node>>,
-    computation: Box<dyn Fn(Vec<f32>) -> f32>,
-    cache: RefCell<BTreeMap<String, f32>>,
-}
-
-impl ComputationNode {
-    fn compute(&self) -> f32 {
-        let v = self.input.iter().map(|x| x.compute()).collect();
-        // println!("{:?}", v);
-        let key = format!("{:?}", v);
-        if self.cache.borrow().contains_key(&key) {
-            println!("Getting cached value");
-            return *self.cache.borrow().get(&key).unwrap();
-        }
-        println!("Computing");
-        let result = (self.computation)(v);
-        self.cache.borrow_mut().insert(key, result);
-        result
-    }
-}
-
-fn create_input<'a>(x: f32) -> Rc<Node> {
-    Rc::new(Node {
-        node_type: RefCell::new(NodeType::Variable(x)),
-    })
-}
-
-fn add(first: Rc<Node>, second: Rc<Node>) -> Rc<Node> {
-    let v = vec![first, second];
-    Rc::new(Node {
-        node_type: RefCell::new(NodeType::Computable(ComputationNode {
-            input: v,
-            computation: Box::new(|a: Vec<f32>| a[0] + a[1]),
-            cache: RefCell::new(BTreeMap::new()),
-        })),
-    })
-}
-
-fn mul(first: Rc<Node>, second: Rc<Node>) -> Rc<Node> {
-    let v = vec![first, second];
-    Rc::new(Node {
-        node_type: RefCell::new(NodeType::Computable(ComputationNode {
-            input: v,
-            computation: Box::new(|a: Vec<f32>| a[0] * a[1]),
-            cache: RefCell::new(BTreeMap::new()),
-        })),
-    })
-}
-
-fn sin(x: Rc<Node>) -> Rc<Node> {
-    let v = vec![x];
-    Rc::new(Node {
-        node_type: RefCell::new(NodeType::Computable(ComputationNode {
-            input: v,
-            computation: Box::new(|a: Vec<f32>| a[0].sin()),
-            cache: RefCell::new(BTreeMap::new()),
-        })),
-    })
-}
-
-fn pow_f32(base: Rc<Node>, exponent: Rc<Node>) -> Rc<Node> {
-    let v = vec![base, exponent];
-    Rc::new(Node {
-        node_type: RefCell::new(NodeType::Computable(ComputationNode {
-            input: v,
-            computation: Box::new(|a: Vec<f32>| a[0].powf(a[1])),
-            cache: RefCell::new(BTreeMap::new()),
-        })),
-    })
+// round to decimal digits
+fn round(x: f32, precision: u32) -> f32 {
+    let m = 10i32.pow(precision) as f32;
+    (x * m).round() / m
 }
